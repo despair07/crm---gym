@@ -1,69 +1,131 @@
-# Gym CRM API (FastAPI + MySQL)
+# 🏋️ Gym CRM - Sistema de Gestión para Gimnasios
 
-Proyecto CRM para gimnasio usando arquitectura en capas, procedimientos almacenados y triggers sobre la base de datos `gimnasio`.
+CRM completo para gimnasio con panel de administración, gestión de usuarios, membresías, pagos, entrenamientos y campañas de marketing.
 
-## Requisitos
+## 🛠️ Stack Tecnológico
 
-- Python 3.9+
-- MySQL Server
-- Base de datos `gimnasio` creada con tus tablas
+- **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS
+- **Backend**: FastAPI (Python)
+- **Base de datos**: MySQL (con stored procedures)
+- **Auth**: JWT
 
-## Configuración
+---
 
-1. Crear entorno virtual:
+## 📁 Estructura del Proyecto
 
-```bash
-python -m venv venv
+```
+crm-gym/
+├── app/              # Backend FastAPI
+│   ├── routers/
+│   ├── schemas/
+│   ├── repositories/
+│   └── main.py
+├── frontend/         # Frontend React
+│   ├── src/
+│   ├── vercel.json   # Configuración de Vercel
+│   └── vite.config.ts
+├── sql/              # Scripts SQL (tablas, procedures)
+├── .env.example      # Plantilla de variables de entorno
+└── requirements.txt
 ```
 
-2. Activar entorno (Windows):
+---
+
+## 🚀 Instalación Local
+
+### 1. Backend (FastAPI)
 
 ```bash
-venv\Scripts\activate
-```
+# Clonar repositorio
+git clone https://github.com/TU_USUARIO/crm-gym.git
+cd crm-gym
 
-3. Instalar dependencias:
+# Crear entorno virtual
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Mac/Linux
 
-```bash
+# Instalar dependencias
 pip install -r requirements.txt
+
+# Configurar variables de entorno
+copy .env.example .env
+# Editar .env con tus credenciales de MySQL
+
+# Iniciar el backend
+uvicorn app.main:app --reload --port 8000
 ```
 
-4. Crear `.env` desde `.env.example` y completar contraseña.
-
-## SQL requerido
-
-Ejecuta en MySQL, en este orden:
-
-1. `sql/schema.sql` - Crear todas las tablas
-2. `sql/procedures.sql` - Crear procedimientos almacenados
-3. `sql/triggers.sql` - Crear triggers de base de datos
-4. `sql/seed_data.sql` - Datos de prueba/ejemplo (OPCIONAL)
-
-## Ejecutar API
+### 2. Frontend (React + Vite)
 
 ```bash
-python -m uvicorn app.main:app --reload
+cd frontend
+
+# Configurar variables de entorno
+copy .env.example .env
+# Editar .env: VITE_API_BASE_URL=http://127.0.0.1:8000
+
+# Instalar dependencias
+npm install
+
+# Iniciar en desarrollo
+npm run dev
 ```
 
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
+Abre **http://localhost:5173** para ver la landing page.
 
-## Endpoints principales
+---
 
-- `POST /api/v1/auth/login`
-- `GET|POST|PUT|DELETE /api/v1/usuarios`
-- `GET|POST|PUT /api/v1/membresias`
-- `GET|POST /api/v1/pagos`
-- `GET|POST /api/v1/asistencia`
-- `GET|POST|PUT|DELETE /api/v1/entrenamientos`
-- `GET|POST /api/v1/campanas`
-- `POST /api/v1/campanas/{id}/asignar-usuarios`
-- `GET|POST /api/v1/seguimiento`
+## ☁️ Despliegue en Vercel (Frontend)
 
-## Arquitectura
+### Opción 1: Desde la web de Vercel
 
-- `app/routers`: capa API REST
-- `app/services`: lógica de negocio
-- `app/repositories`: acceso a datos (SP)
-- `app/schemas`: validación y contratos Pydantic
-- `sql/`: procedimientos y triggers
+1. Sube el proyecto a GitHub
+2. Ve a [vercel.com](https://vercel.com) → **New Project**
+3. Importa tu repositorio de GitHub
+4. Configura:
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+5. En **Environment Variables** agrega:
+   ```
+   VITE_API_BASE_URL = https://tu-api-backend.com
+   ```
+6. Haz clic en **Deploy** ✅
+
+### Opción 2: Vercel CLI
+
+```bash
+cd frontend
+npm i -g vercel
+vercel login
+vercel --prod
+```
+
+---
+
+## 🌐 Despliegue del Backend
+
+El backend FastAPI requiere una base de datos MySQL. Opciones recomendadas:
+
+| Servicio | Precio | Link |
+|----------|--------|------|
+| **Railway** | Gratis (con límites) | [railway.app](https://railway.app) |
+| **Render** | Gratis (con límites) | [render.com](https://render.com) |
+| **DigitalOcean** | Pago | [digitalocean.com](https://digitalocean.com) |
+
+---
+
+## 👥 Roles de Usuario
+
+| Rol | Acceso |
+|-----|--------|
+| **Admin (1)** | Todo el sistema |
+| **Entrenador (2)** | Entrenamientos, Asistencia, Seguimiento |
+| **Cliente (3)** | Solo Dashboard propio |
+
+---
+
+## 📄 Licencia
+
+MIT License
