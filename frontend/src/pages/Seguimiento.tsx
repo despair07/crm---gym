@@ -11,17 +11,17 @@ import { formatFecha } from '../utils/format';
 import type { SeguimientoResponse, SeguimientoCreate, UsuarioResponse } from '../types/api';
 
 const TIPO_META: Record<string, { icon: string; badge: string; label: string }> = {
-  nota:        { icon: '📝', badge: 'badge-info',    label: 'Nota' },
-  llamada:     { icon: '📞', badge: 'badge-purple',  label: 'Llamada' },
-  email:       { icon: '📧', badge: 'badge-info',    label: 'Email' },
-  visita:      { icon: '👤', badge: 'badge-success', label: 'Visita' },
-  evaluacion:  { icon: '📊', badge: 'badge-warning', label: 'Evaluación' },
-  seguimiento: { icon: '🔍', badge: 'badge-info',    label: 'Seguimiento' },
-  alerta:      { icon: '⚠️', badge: 'badge-danger',  label: 'Alerta' },
+  nota: { icon: '📝', badge: 'badge-info', label: 'Nota' },
+  llamada: { icon: '📞', badge: 'badge-purple', label: 'Llamada' },
+  email: { icon: '📧', badge: 'badge-info', label: 'Email' },
+  visita: { icon: '👤', badge: 'badge-success', label: 'Visita' },
+  evaluacion: { icon: '📊', badge: 'badge-warning', label: 'Evaluación' },
+  seguimiento: { icon: '🔍', badge: 'badge-info', label: 'Seguimiento' },
+  alerta: { icon: '⚠️', badge: 'badge-danger', label: 'Alerta' },
 };
 
 const Seguimiento = () => {
-  const { user, isAdmin, isEntrenador } = useAuth();
+  const { user, isEntrenador } = useAuth();
 
   const [clientes, setClientes] = useState<UsuarioResponse[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<UsuarioResponse | null>(null);
@@ -33,8 +33,11 @@ const Seguimiento = () => {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchCliente, setSearchCliente] = useState('');
+
   const [formData, setFormData] = useState<SeguimientoCreate>({
-    id_usuario: 0, tipo: 'nota', comentario: '',
+    id_usuario: 0,
+    tipo: 'nota',
+    comentario: '',
   });
 
   useEffect(() => {
