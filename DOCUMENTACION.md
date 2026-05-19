@@ -233,6 +233,12 @@ Selector de clientes por nombre (igual que Entrenamientos). Historial con iconos
 
 Todos requieren `Authorization: Bearer <token>` excepto los marcados como públicos.
 
+### Notas sobre permisos:
+- **DELETE /api/v1/pagos/{id_pago}**: Solo Admin (rol_id=1)
+- **Otros endpoints DELETE/PUT**: Requieren autenticación. Los permisos se validan en cada servicio según el rol del usuario
+- Endpoints de **listar/obtener**: Generalmente accesibles para todos los autenticados, pero el frontend filtra según rol
+- Admin tiene acceso total a todos los módulos. Entrenador y Cliente tienen acceso restringido según su rol
+
 | Método | Ruta | Descripción |
 |---|---|---|
 | POST | /api/v1/auth/login | Login (público) |
@@ -247,10 +253,11 @@ Todos requieren `Authorization: Bearer <token>` excepto los marcados como públi
 | POST | /api/v1/membresias | Crear membresía |
 | PUT | /api/v1/membresias/{id}/renovar | Renovar membresía |
 | PUT | /api/v1/membresias/{id}/cancelar | Cancelar membresía |
-| GET | /api/v1/pagos/ | Listar todos los pagos |
+| GET | /api/v1/pagos/ | Listar todos los pagos (sin parámetro) o por membresía (con id_membresia) |
 | POST | /api/v1/pagos | Registrar pago |
+| DELETE | /api/v1/pagos/{id_pago} | Eliminar pago (solo Admin) |
 | GET | /api/v1/asistencia/ | Listar toda la asistencia |
-| GET | /api/v1/asistencia/usuario/{id} | Asistencia de un usuario |
+| GET | /api/v1/asistencia/usuario/{id} | Asistencia de un usuario específico |
 | POST | /api/v1/asistencia | Registrar entrada o salida |
 | GET | /api/v1/entrenamientos/usuario/{id} | Entrenamientos de un usuario |
 | POST | /api/v1/entrenamientos | Crear entrenamiento |
@@ -258,11 +265,11 @@ Todos requieren `Authorization: Bearer <token>` excepto los marcados como públi
 | DELETE | /api/v1/entrenamientos/{id} | Eliminar entrenamiento |
 | GET | /api/v1/campanas/ | Listar campañas |
 | POST | /api/v1/campanas | Crear campaña |
-| PUT | /api/v1/campanas/{id} | Editar campaña |
-| DELETE | /api/v1/campanas/{id} | Eliminar campaña |
-| POST | /api/v1/campanas/{id}/asignar-usuarios | Asignar usuarios |
-| GET | /api/v1/campanas/{id}/usuarios | Ver usuarios de campaña |
-| GET | /api/v1/seguimiento/usuario/{id} | Historial de seguimiento |
+| PUT | /api/v1/campanas/{id} | Editar campaña (nombre, descripción, fechas, estado) |
+| DELETE | /api/v1/campanas/{id} | Eliminar campaña (borra también asignaciones en usuario_campana) |
+| POST | /api/v1/campanas/{id}/asignar-usuarios | Asignar usuarios a campaña |
+| GET | /api/v1/campanas/{id}/usuarios | Listar usuarios asignados a campaña |
+| GET | /api/v1/seguimiento/usuario/{id} | Historial de seguimiento de un usuario |
 | POST | /api/v1/seguimiento | Crear registro de seguimiento |
 | GET | /api/v1/landing/ | Info del gym (público) |
 | GET | /api/v1/landing/planes | Planes y precios (público) |
@@ -332,5 +339,5 @@ Clases utilitarias en `src/App.css`:
 
 ---
 
-*Gym Popayán CRM v2.0 · Documentación actualizada 9 de mayo de 2026*
+*Gym Popayán CRM v2.0 · Documentación actualizada 19 de mayo de 2026*
 *Popayán, Cauca, Colombia · America/Bogota (UTC-5)*
