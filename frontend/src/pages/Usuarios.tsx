@@ -1,3 +1,7 @@
+/**
+ * Gestión de Usuarios (Admin)
+ * CRUD completo + asignación de entrenador a clientes
+ */
 import { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { usuarioService } from '../services/usuarioService';
@@ -5,6 +9,7 @@ import type { UsuarioResponse, UsuarioCreate, UsuarioUpdate } from '../types/api
 
 const Usuarios = () => {
   const [usuarios, setUsuarios] = useState<UsuarioResponse[]>([]);
+  const [entrenadores, setEntrenadores] = useState<UsuarioResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -13,15 +18,25 @@ const Usuarios = () => {
   const [editingUser, setEditingUser] = useState<UsuarioResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterRol, setFilterRol] = useState<number | null>(null);
   const [createForm, setCreateForm] = useState<UsuarioCreate>({
     nombre: '', email: '', password: '', telefono: '', fecha_nacimiento: '', estado: 'activo', id_rol: 3,
   });
   const [editForm, setEditForm] = useState<UsuarioUpdate>({});
 
   const fetchUsuarios = async () => {
-    try { setLoading(true); const data = await usuarioService.listar(); setUsuarios(data); setError(null); }
-    catch (err: any) { setError(err.response?.data?.detail || 'Error al cargar usuarios'); }
-    finally { setLoading(false); }
+    try {
+      setLoading(true);
+      const data = await usuarioService.listar();
+      setUsuarios(data);
+      // Extraer entrenadores (rol=2) para el selector
+      setEntrenadores(data.filter((u: UsuarioResponse) => u.id_rol === 2));
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al cargar usuarios');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchUsuarios(); }, []);
@@ -41,7 +56,13 @@ const Usuarios = () => {
 
   const handleEdit = (user: UsuarioResponse) => {
     setEditingUser(user);
-    setEditForm({ nombre: user.nombre, telefono: user.telefono, estado: user.estado, id_rol: user.id_rol });
+    setEditForm({
+      nombre: user.nombre,
+      telefono: user.telefono,
+      estado: user.estado,
+      id_rol: user.id_rol,
+      id_entrenador: user.id_entrenador || null,
+    });
     setShowEditModal(true);
   };
 
@@ -86,10 +107,19 @@ const Usuarios = () => {
     'from-accent-cyan to-blue-400',
   ];
 
-  const filteredUsuarios = usuarios.filter(u =>
-    u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsuarios = usuarios.filter(u => {
+    const matchSearch = u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchRol = filterRol === null || u.id_rol === filterRol;
+    return matchSearch && matchRol;
+  });
+
+  // Obtener el nombre del entrenador por ID
+  const getEntrenadorNombre = (id_entrenador: number | null | undefined) => {
+    if (!id_entrenador) return null;
+    const ent = entrenadores.find(e => e.id_usuario === id_entrenador);
+    return ent ? ent.nombre : `#${id_entrenador}`;
+  };
 
   return (
     <Layout>
@@ -110,10 +140,10 @@ const Usuarios = () => {
         {success && <div className="alert alert-success">{success}</div>}
         {error && <div className="alert alert-error">❌ {error}</div>}
 
-        {/* Search */}
+        {/* Search + Filtros */}
         <div className="card p-4">
-          <div className="flex items-center gap-3">
-            <svg className="w-4 h-4 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-3 flex-wrap">
+            <svg className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-faint)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -121,9 +151,24 @@ const Usuarios = () => {
               placeholder="Buscar por nombre o email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field !bg-transparent !border-0 !shadow-none !ring-0 focus:!shadow-none"
+              className="input-field !bg-transparent !border-0 !shadow-none !ring-0 focus:!shadow-none flex-1"
             />
-            <span className="text-xs text-dark-500 whitespace-nowrap">{filteredUsuarios.length} usuarios</span>
+            <div className="flex items-center gap-2">
+              {[null, 1, 2, 3].map((rol) => (
+                <button
+                  key={rol ?? 'all'}
+                  onClick={() => setFilterRol(rol)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    filterRol === rol
+                      ? 'bg-primary-500/20 text-primary-300 border border-primary-500/30'
+                      : 'bg-dark-800/50 text-dark-500 border border-white/5 hover:text-dark-200'
+                  }`}
+                >
+                  {rol === null ? 'Todos' : getRoleName(rol)}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs whitespace-nowrap" style={{ color: 'var(--text-faint)' }}>{filteredUsuarios.length} usuarios</span>
           </div>
         </div>
 
@@ -140,27 +185,46 @@ const Usuarios = () => {
                     <th>Email</th>
                     <th>Teléfono</th>
                     <th>Rol</th>
+                    <th>Entrenador</th>
                     <th>Estado</th>
                     <th className="text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsuarios.length === 0 ? (
-                    <tr><td colSpan={7} className="empty-state">No hay usuarios registrados</td></tr>
+                    <tr><td colSpan={8} className="empty-state">No hay usuarios registrados</td></tr>
                   ) : filteredUsuarios.map((u, idx) => (
                     <tr key={u.id_usuario}>
-                      <td className="font-mono text-dark-500 text-xs">#{u.id_usuario}</td>
+                      <td className="font-mono text-xs" style={{ color: 'var(--text-faint)' }}>#{u.id_usuario}</td>
                       <td>
                         <div className="flex items-center gap-3">
                           <div className={`avatar avatar-sm bg-gradient-to-br ${avatarColors[idx % avatarColors.length]} text-white`}>
                             {u.nombre.charAt(0)}
                           </div>
-                          <span className="font-medium text-dark-100">{u.nombre}</span>
+                          <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{u.nombre}</span>
                         </div>
                       </td>
-                      <td className="text-dark-400">{u.email}</td>
-                      <td className="text-dark-400">{u.telefono || '—'}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{u.email}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{u.telefono || '—'}</td>
                       <td><span className={`badge ${getRoleBadge(u.id_rol)}`}>{getRoleName(u.id_rol)}</span></td>
+                      <td>
+                        {u.id_rol === 3 ? (
+                          u.entrenador_nombre || getEntrenadorNombre(u.id_entrenador) ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-accent-emerald to-green-500 text-white text-xs flex items-center justify-center font-bold">
+                                {(u.entrenador_nombre || getEntrenadorNombre(u.id_entrenador) || '?').charAt(0)}
+                              </div>
+                              <span className="text-xs font-medium" style={{ color: 'var(--text-body)' }}>
+                                {u.entrenador_nombre || getEntrenadorNombre(u.id_entrenador)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs italic" style={{ color: 'var(--text-disabled)' }}>Sin asignar</span>
+                          )
+                        ) : (
+                          <span className="text-xs" style={{ color: 'var(--text-disabled)' }}>—</span>
+                        )}
+                      </td>
                       <td><span className={`badge ${u.estado === 'activo' ? 'badge-success' : 'badge-danger'}`}>{u.estado}</span></td>
                       <td className="text-right space-x-1">
                         <button onClick={() => handleEdit(u)} className="action-btn action-btn-edit">Editar</button>
@@ -178,7 +242,7 @@ const Usuarios = () => {
         {showCreateModal && (
           <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
             <div className="modal-content p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-white mb-5">✨ Nuevo Usuario</h3>
+              <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--text-primary)' }}>✨ Nuevo Usuario</h3>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -221,6 +285,29 @@ const Usuarios = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* Selector de entrenador (solo si el rol es Cliente) */}
+                {createForm.id_rol === 3 && (
+                  <div>
+                    <label className="input-label">🏋️ Entrenador Asignado</label>
+                    <select
+                      value={createForm.id_entrenador || ''}
+                      onChange={(e) => setCreateForm({...createForm, id_entrenador: e.target.value ? parseInt(e.target.value) : null})}
+                      className="input-field"
+                    >
+                      <option value="">Sin asignar</option>
+                      {entrenadores.map((ent) => (
+                        <option key={ent.id_usuario} value={ent.id_usuario}>
+                          {ent.nombre} (ID: {ent.id_usuario})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
+                      Selecciona el entrenador que supervisará a este cliente
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-3">
                   <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-ghost">Cancelar</button>
                   <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? 'Creando...' : 'Crear Usuario'}</button>
@@ -234,7 +321,7 @@ const Usuarios = () => {
         {showEditModal && editingUser && (
           <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
             <div className="modal-content p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-white mb-5">✏️ Editar: {editingUser.nombre}</h3>
+              <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--text-primary)' }}>✏️ Editar: {editingUser.nombre}</h3>
               <form onSubmit={handleUpdate} className="space-y-4">
                 <div>
                   <label className="input-label">Nombre</label>
@@ -261,6 +348,37 @@ const Usuarios = () => {
                     <option value={3}>Cliente</option>
                   </select>
                 </div>
+
+                {/* Selector de entrenador (solo si el rol es/será Cliente) */}
+                {(editForm.id_rol === 3 || editingUser.id_rol === 3) && (
+                  <div className="p-4 rounded-xl" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}>
+                    <label className="input-label flex items-center gap-2">
+                      <span className="text-base">🏋️</span>
+                      <span>Entrenador Asignado</span>
+                    </label>
+                    <select
+                      value={editForm.id_entrenador ?? editingUser.id_entrenador ?? ''}
+                      onChange={(e) => setEditForm({...editForm, id_entrenador: e.target.value ? parseInt(e.target.value) : null})}
+                      className="input-field"
+                    >
+                      <option value="">Sin asignar</option>
+                      {entrenadores.map((ent) => (
+                        <option key={ent.id_usuario} value={ent.id_usuario}>
+                          {ent.nombre} (ID: {ent.id_usuario})
+                        </option>
+                      ))}
+                    </select>
+                    {editingUser.entrenador_nombre && (
+                      <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                        Actual: <span className="font-semibold text-accent-emerald">{editingUser.entrenador_nombre}</span>
+                      </p>
+                    )}
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
+                      Cambia o asigna el entrenador que supervisará a este cliente
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-3">
                   <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-ghost">Cancelar</button>
                   <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? 'Guardando...' : 'Guardar Cambios'}</button>

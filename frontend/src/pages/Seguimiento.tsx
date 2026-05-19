@@ -1,6 +1,7 @@
 /**
  * Seguimiento mejorado - con selector de clientes por nombre
- * Muestra nombres completos, iconos y fechas formateadas
+ * Admin/Entrenador: selecciona cliente y gestiona seguimientos
+ * Cliente: ve solo su historial de seguimiento (read-only)
  */
 import { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
@@ -21,7 +22,7 @@ const TIPO_META: Record<string, { icon: string; badge: string; label: string }> 
 };
 
 const Seguimiento = () => {
-  const { user, isEntrenador } = useAuth();
+  const { user, isEntrenador, isCliente, isAdmin } = useAuth();
 
   const [clientes, setClientes] = useState<UsuarioResponse[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<UsuarioResponse | null>(null);
@@ -41,13 +42,20 @@ const Seguimiento = () => {
   });
 
   useEffect(() => {
-    usuarioService.listar(3).then((data) => {
-      if (isEntrenador && user) {
-        setClientes(data.filter((c) => c.id_entrenador === user.id_usuario));
-      } else {
-        setClientes(data);
-      }
-    }).finally(() => setLoadingClientes(false));
+    if (isCliente && user) {
+      // Cliente: carga directamente su historial de seguimiento
+      setLoadingClientes(false);
+      cargar(user.id_usuario);
+    } else {
+      // Admin y Entrenador: cargar lista de clientes
+      usuarioService.listar(3).then((data) => {
+        if (isEntrenador && user) {
+          setClientes(data.filter((c) => c.id_entrenador === user.id_usuario));
+        } else {
+          setClientes(data);
+        }
+      }).finally(() => setLoadingClientes(false));
+    }
   }, [user]);
 
   const seleccionar = (c: UsuarioResponse) => {
@@ -87,6 +95,65 @@ const Seguimiento = () => {
     c.email.toLowerCase().includes(searchCliente.toLowerCase())
   );
 
+  // ── RENDER PARA CLIENTE ──
+  if (isCliente) {
+    return (
+      <Layout>
+        <div className="animate-fade-in space-y-6 max-w-5xl mx-auto">
+          <div className="page-header">
+            <div>
+              <h1>Mi Seguimiento</h1>
+              <p>Historial de seguimiento que tu entrenador ha registrado</p>
+            </div>
+          </div>
+
+          {error && <div className="alert alert-error">❌ {error}</div>}
+
+          {loading ? (
+            <div className="flex justify-center py-16"><div className="spinner" /></div>
+          ) : registros.length === 0 ? (
+            <div className="card p-12 text-center">
+              <span className="text-4xl">📋</span>
+              <p className="mt-3" style={{ color: 'var(--text-muted)' }}>No hay seguimientos registrados para ti</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {registros.map((r) => {
+                const meta = TIPO_META[r.tipo] || { icon: '📋', badge: 'badge-neutral', label: r.tipo };
+                return (
+                  <div key={r.id_seguimiento} className="glass-card p-5 animate-fade-in">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+                          style={{ background: 'var(--bg-card)' }}>
+                          {meta.icon}
+                        </div>
+                        <div>
+                          <span className={`badge ${meta.badge}`}>{meta.label}</span>
+                          <span className="text-xs ml-2 font-mono" style={{ color: 'var(--text-disabled)' }}>#{r.id_seguimiento}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium" style={{ color: 'var(--text-faint)' }}>{formatFecha(r.fecha)}</span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-body)' }}>
+                      {r.comentario || <span className="italic" style={{ color: 'var(--text-disabled)' }}>Sin comentario</span>}
+                    </p>
+                    {r.registrado_por_nombre && (
+                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs" style={{ color: 'var(--text-faint)' }}>
+                        <span>📝 Por: <span style={{ color: 'var(--text-muted)' }}>{r.registrado_por_nombre}</span></span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Layout>
+    );
+  }
+
+  // ── RENDER PARA ADMIN/ENTRENADOR ──
   return (
     <Layout>
       <div className="animate-fade-in space-y-6 max-w-7xl mx-auto">
@@ -116,13 +183,13 @@ const Seguimiento = () => {
         {/* Selector de clientes */}
         <div className="card">
           <div className="card-header">
-            <h2 className="text-sm font-bold text-dark-200">
+            <h2 className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
               {isEntrenador ? '👥 Mis Clientes' : '👥 Seleccionar Cliente'}
             </h2>
             {clienteSeleccionado && (
               <button
                 onClick={() => { setClienteSeleccionado(null); setRegistros([]); }}
-                className="text-xs text-dark-500 hover:text-dark-300 transition-colors"
+                className="text-xs transition-colors" style={{ color: 'var(--text-faint)' }}
               >
                 ← Ver todos
               </button>
@@ -134,12 +201,13 @@ const Seguimiento = () => {
           ) : clientes.length === 0 ? (
             <div className="p-8 text-center">
               <span className="text-3xl">👤</span>
-              <p className="text-dark-400 mt-2 text-sm">No hay clientes disponibles</p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>No hay clientes disponibles</p>
             </div>
           ) : !clienteSeleccionado ? (
             <div className="p-4 space-y-3">
-              <div className="flex items-center gap-2 bg-dark-800/50 border border-white/5 rounded-xl px-3 py-2">
-                <svg className="w-4 h-4 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}>
+                <svg className="w-4 h-4" style={{ color: 'var(--text-faint)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -147,7 +215,8 @@ const Seguimiento = () => {
                   placeholder="Buscar cliente..."
                   value={searchCliente}
                   onChange={(e) => setSearchCliente(e.target.value)}
-                  className="bg-transparent border-0 outline-none text-sm text-dark-200 placeholder-dark-500 flex-1"
+                  className="bg-transparent border-0 outline-none text-sm flex-1"
+                  style={{ color: 'var(--text-secondary)' }}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -155,16 +224,23 @@ const Seguimiento = () => {
                   <button
                     key={c.id_usuario}
                     onClick={() => seleccionar(c)}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-dark-800/50 border border-white/5 hover:border-primary-500/30 hover:bg-dark-800 transition-all duration-200 text-left group"
+                    className="flex items-center gap-3 p-3 rounded-xl border hover:border-primary-500/30 transition-all duration-200 text-left group"
+                    style={{ background: 'var(--bg-input)', borderColor: 'var(--border-subtle)' }}
                   >
                     <div className="avatar avatar-sm bg-gradient-to-br from-accent-violet to-purple-500 text-white flex-shrink-0">
                       {c.nombre.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-dark-100 text-sm truncate group-hover:text-white">{c.nombre}</p>
-                      <p className="text-xs text-dark-500 truncate">{c.email}</p>
+                      <p className="font-medium text-sm truncate group-hover:text-white" style={{ color: 'var(--text-secondary)' }}>{c.nombre}</p>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-faint)' }}>{c.email}</p>
+                      {/* Mostrar entrenador asignado */}
+                      {isAdmin && c.entrenador_nombre && (
+                        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          🏋️ {c.entrenador_nombre}
+                        </p>
+                      )}
                     </div>
-                    <svg className="w-4 h-4 text-dark-600 group-hover:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 group-hover:text-primary-400 flex-shrink-0" style={{ color: 'var(--text-disabled)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -177,8 +253,14 @@ const Seguimiento = () => {
                 {clienteSeleccionado.nombre.charAt(0)}
               </div>
               <div>
-                <p className="font-bold text-dark-100">{clienteSeleccionado.nombre}</p>
-                <p className="text-xs text-dark-500">{clienteSeleccionado.email}</p>
+                <p className="font-bold" style={{ color: 'var(--text-secondary)' }}>{clienteSeleccionado.nombre}</p>
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{clienteSeleccionado.email}</p>
+                {/* Mostrar entrenador asignado al admin */}
+                {isAdmin && clienteSeleccionado.entrenador_nombre && (
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    🏋️ Entrenador: {clienteSeleccionado.entrenador_nombre}
+                  </p>
+                )}
               </div>
               <span className={`badge ml-auto ${clienteSeleccionado.estado === 'activo' ? 'badge-success' : 'badge-danger'}`}>
                 {clienteSeleccionado.estado}
@@ -194,7 +276,7 @@ const Seguimiento = () => {
           ) : registros.length === 0 ? (
             <div className="card p-12 text-center">
               <span className="text-4xl">📋</span>
-              <p className="text-dark-400 mt-3">No hay seguimientos para este cliente</p>
+              <p className="mt-3" style={{ color: 'var(--text-muted)' }}>No hay seguimientos para este cliente</p>
               <button onClick={() => setShowModal(true)} className="btn btn-primary mt-4 text-sm">
                 + Primer seguimiento
               </button>
@@ -207,23 +289,24 @@ const Seguimiento = () => {
                   <div key={r.id_seguimiento} className="glass-card p-5 animate-fade-in">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-dark-800 flex items-center justify-center text-lg">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+                          style={{ background: 'var(--bg-card)' }}>
                           {meta.icon}
                         </div>
                         <div>
                           <span className={`badge ${meta.badge}`}>{meta.label}</span>
-                          <span className="text-xs text-dark-600 ml-2 font-mono">#{r.id_seguimiento}</span>
+                          <span className="text-xs ml-2 font-mono" style={{ color: 'var(--text-disabled)' }}>#{r.id_seguimiento}</span>
                         </div>
                       </div>
-                      <span className="text-xs text-dark-500 font-medium">{formatFecha(r.fecha)}</span>
+                      <span className="text-xs font-medium" style={{ color: 'var(--text-faint)' }}>{formatFecha(r.fecha)}</span>
                     </div>
-                    <p className="text-sm text-dark-300 leading-relaxed">
-                      {r.comentario || <span className="italic text-dark-600">Sin comentario</span>}
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-body)' }}>
+                      {r.comentario || <span className="italic" style={{ color: 'var(--text-disabled)' }}>Sin comentario</span>}
                     </p>
-                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs text-dark-500">
+                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs" style={{ color: 'var(--text-faint)' }}>
                       <span>👤 {r.usuario_nombre || `Usuario #${r.id_usuario}`}</span>
                       {r.registrado_por_nombre && (
-                        <span>📝 Por: <span className="text-dark-400">{r.registrado_por_nombre}</span></span>
+                        <span>📝 Por: <span style={{ color: 'var(--text-muted)' }}>{r.registrado_por_nombre}</span></span>
                       )}
                     </div>
                   </div>
@@ -237,10 +320,10 @@ const Seguimiento = () => {
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal-content p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-white mb-1">📋 Nuevo Seguimiento</h3>
+              <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>📋 Nuevo Seguimiento</h3>
               {clienteSeleccionado && (
-                <p className="text-sm text-dark-400 mb-5">
-                  Cliente: <span className="text-dark-200 font-medium">{clienteSeleccionado.nombre}</span>
+                <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+                  Cliente: <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{clienteSeleccionado.nombre}</span>
                 </p>
               )}
               <form onSubmit={handleCrear} className="space-y-4">

@@ -1,9 +1,10 @@
 /**
- * Campañas - CRUD completo para Admin
+ * Campañas - CRUD completo para Admin, solo lectura para Cliente
  * Crear, editar, eliminar, ver detalles y asignar usuarios
  */
 import { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
+import { useAuth } from '../context/AuthContext';
 import { campanaService } from '../services/campanaService';
 import { formatFecha } from '../utils/format';
 import type { CampanaResponse, CampanaCreate } from '../types/api';
@@ -23,6 +24,7 @@ const ESTADO_META: Record<string, { badge: string; icon: string; label: string }
 };
 
 const Campanas = () => {
+  const { isAdmin, isCliente } = useAuth();
   const [campanas, setCampanas] = useState<CampanaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,12 @@ const Campanas = () => {
     try {
       setLoading(true);
       const data = await campanaService.listar();
-      setCampanas(data);
+      // Cliente: solo ve campañas activas (promos vigentes)
+      if (isCliente) {
+        setCampanas(data.filter(c => c.estado === 'activa'));
+      } else {
+        setCampanas(data);
+      }
     } catch (err: any) {
       notifyError(err.response?.data?.detail || 'Error al cargar campañas');
     } finally {
@@ -121,60 +128,66 @@ const Campanas = () => {
         {/* Header */}
         <div className="page-header">
           <div>
-            <h1>Campañas</h1>
-            <p>Gestión de campañas de marketing del Gym Popayán</p>
+            <h1>{isCliente ? 'Promociones' : 'Campañas'}</h1>
+            <p>{isCliente ? 'Conoce las promociones actuales del Gym Popayán' : 'Gestión de campañas de marketing del Gym Popayán'}</p>
           </div>
-          <button onClick={abrirCrear} className="btn btn-primary">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Nueva Campaña
-          </button>
+          {isAdmin && (
+            <button onClick={abrirCrear} className="btn btn-primary">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Nueva Campaña
+            </button>
+          )}
         </div>
 
         {success && <div className="alert alert-success">{success}</div>}
         {error && <div className="alert alert-error">❌ {error}</div>}
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: 'Total', value: stats.total, icon: '📢', color: 'blue' },
-            { label: 'Activas', value: stats.activas, icon: '🟢', color: 'green' },
-            { label: 'Pausadas', value: stats.pausadas, icon: '🟡', color: 'amber' },
-            { label: 'Finalizadas', value: stats.finalizadas, icon: '⚪', color: 'blue' },
-          ].map((s) => (
-            <div key={s.label} className={`stat-card ${s.color}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{s.icon}</span>
-                <span className="text-xs text-dark-400">{s.label}</span>
+        {/* Stats - solo Admin */}
+        {isAdmin && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: 'Total', value: stats.total, icon: '📢', color: 'blue' },
+              { label: 'Activas', value: stats.activas, icon: '🟢', color: 'green' },
+              { label: 'Pausadas', value: stats.pausadas, icon: '🟡', color: 'amber' },
+              { label: 'Finalizadas', value: stats.finalizadas, icon: '⚪', color: 'blue' },
+            ].map((s) => (
+              <div key={s.label} className={`stat-card ${s.color}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{s.icon}</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.label}</span>
+                </div>
+                <p className="text-3xl font-extrabold text-white">{loading ? '—' : s.value}</p>
               </div>
-              <p className="text-3xl font-extrabold text-white">{loading ? '—' : s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Filtros por estado */}
-        <div className="card p-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-dark-500 mr-1">Filtrar:</span>
-            {['todos', 'activa', 'pausada', 'finalizada'].map((e) => (
-              <button
-                key={e}
-                onClick={() => setFiltroEstado(e)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filtroEstado === e
-                    ? 'bg-primary-500/20 text-primary-300 border border-primary-500/30'
-                    : 'bg-dark-800/50 text-dark-500 border border-white/5 hover:text-dark-200'
-                }`}
-              >
-                {e === 'todos' ? `Todas (${stats.total})` :
-                 e === 'activa' ? `🟢 Activas (${stats.activas})` :
-                 e === 'pausada' ? `🟡 Pausadas (${stats.pausadas})` :
-                 `⚪ Finalizadas (${stats.finalizadas})`}
-              </button>
             ))}
           </div>
-        </div>
+        )}
+
+        {/* Filtros por estado - solo Admin */}
+        {isAdmin && (
+          <div className="card p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs mr-1" style={{ color: 'var(--text-faint)' }}>Filtrar:</span>
+              {['todos', 'activa', 'pausada', 'finalizada'].map((e) => (
+                <button
+                  key={e}
+                  onClick={() => setFiltroEstado(e)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    filtroEstado === e
+                      ? 'bg-primary-500/20 text-primary-300 border border-primary-500/30'
+                      : 'bg-dark-800/50 text-dark-500 border border-white/5 hover:text-dark-200'
+                  }`}
+                >
+                  {e === 'todos' ? `Todas (${stats.total})` :
+                   e === 'activa' ? `🟢 Activas (${stats.activas})` :
+                   e === 'pausada' ? `🟡 Pausadas (${stats.pausadas})` :
+                   `⚪ Finalizadas (${stats.finalizadas})`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Lista de campañas */}
         {loading ? (
@@ -182,8 +195,14 @@ const Campanas = () => {
         ) : campanasFiltradas.length === 0 ? (
           <div className="card p-12 text-center">
             <span className="text-4xl block mb-3">📢</span>
-            <p className="text-dark-400">No hay campañas {filtroEstado !== 'todos' ? `con estado "${filtroEstado}"` : 'registradas'}</p>
-            <button onClick={abrirCrear} className="btn btn-primary mt-4 text-sm">+ Crear primera campaña</button>
+            <p style={{ color: 'var(--text-muted)' }}>
+              {isCliente
+                ? 'No hay promociones activas en este momento'
+                : `No hay campañas ${filtroEstado !== 'todos' ? `con estado "${filtroEstado}"` : 'registradas'}`}
+            </p>
+            {isAdmin && (
+              <button onClick={abrirCrear} className="btn btn-primary mt-4 text-sm">+ Crear primera campaña</button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -197,7 +216,7 @@ const Campanas = () => {
                       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-violet to-purple-600 flex items-center justify-center text-lg flex-shrink-0">
                         📢
                       </div>
-                      <h3 className="text-sm font-bold text-white truncate">{c.nombre}</h3>
+                      <h3 className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{c.nombre}</h3>
                     </div>
                     <span className={`badge ${meta.badge} ml-2 flex-shrink-0`}>
                       {meta.icon} {meta.label}
@@ -205,57 +224,59 @@ const Campanas = () => {
                   </div>
 
                   {/* Descripción */}
-                  <p className="text-xs text-dark-400 mb-4 line-clamp-2 flex-1">
-                    {c.descripcion || <span className="italic text-dark-600">Sin descripción</span>}
+                  <p className="text-xs mb-4 line-clamp-2 flex-1" style={{ color: 'var(--text-muted)' }}>
+                    {c.descripcion || <span className="italic" style={{ color: 'var(--text-disabled)' }}>Sin descripción</span>}
                   </p>
 
                   {/* Fechas */}
-                  <div className="space-y-1 text-xs text-dark-500 mb-4">
+                  <div className="space-y-1 text-xs mb-4" style={{ color: 'var(--text-faint)' }}>
                     <div className="flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span>Inicio: <span className="text-dark-300">{formatFecha(c.fecha_inicio)}</span></span>
+                      <span>Inicio: <span style={{ color: 'var(--text-body)' }}>{formatFecha(c.fecha_inicio)}</span></span>
                     </div>
                     {c.fecha_fin && (
                       <div className="flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Fin: <span className="text-dark-300">{formatFecha(c.fecha_fin)}</span></span>
+                        <span>Fin: <span style={{ color: 'var(--text-body)' }}>{formatFecha(c.fecha_fin)}</span></span>
                       </div>
                     )}
                   </div>
 
-                  {/* Acciones */}
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <span className="text-[10px] text-dark-600 font-mono">ID: #{c.id_campana}</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => abrirEditar(c)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary-500/15 text-primary-300 hover:bg-primary-500/25 border border-primary-500/20 transition-all"
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        onClick={() => handleEliminar(c)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-accent-rose/15 text-accent-rose hover:bg-accent-rose/25 border border-accent-rose/20 transition-all"
-                      >
-                        🗑️ Eliminar
-                      </button>
+                  {/* Acciones - solo Admin */}
+                  {isAdmin && (
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <span className="text-[10px] font-mono" style={{ color: 'var(--text-disabled)' }}>ID: #{c.id_campana}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => abrirEditar(c)}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary-500/15 text-primary-300 hover:bg-primary-500/25 border border-primary-500/20 transition-all"
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          onClick={() => handleEliminar(c)}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-accent-rose/15 text-accent-rose hover:bg-accent-rose/25 border border-accent-rose/20 transition-all"
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* Modal crear / editar */}
-        {showModal && (
+        {/* Modal crear / editar - solo Admin */}
+        {showModal && isAdmin && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal-content p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-white mb-5">
+              <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--text-primary)' }}>
                 {editando ? '✏️ Editar Campaña' : '📢 Nueva Campaña'}
               </h3>
               <form onSubmit={handleGuardar} className="space-y-4">

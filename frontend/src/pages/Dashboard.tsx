@@ -322,6 +322,7 @@ const DashboardCliente = () => {
   const { user } = useAuth();
   const [entrenamientos, setEntrenamientos] = useState<EntrenamientoResponse[]>([]);
   const [membresias, setMembresias] = useState<MembresiaResponse[]>([]);
+  const [entrenadorInfo, setEntrenadorInfo] = useState<UsuarioResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -329,10 +330,23 @@ const DashboardCliente = () => {
     Promise.allSettled([
       entrenamientoService.listarPorUsuario(user.id_usuario),
       membresiaService.listar(),
-    ]).then(([e, m]) => {
+      usuarioService.listar(2), // Cargar entrenadores
+    ]).then(([e, m, entrenadores]) => {
       if (e.status === 'fulfilled') setEntrenamientos(e.value);
       if (m.status === 'fulfilled')
         setMembresias(m.value.filter((mb) => mb.id_usuario === user.id_usuario));
+      // Buscar el entrenador asignado del propio usuario
+      if (entrenadores.status === 'fulfilled') {
+        // Necesitamos obtener el id_entrenador del usuario
+        usuarioService.obtener(user.id_usuario).then((userData) => {
+          if (userData.id_entrenador) {
+            const miEntrenador = (entrenadores.value as UsuarioResponse[]).find(
+              (ent) => ent.id_usuario === userData.id_entrenador
+            );
+            if (miEntrenador) setEntrenadorInfo(miEntrenador);
+          }
+        }).catch(() => {});
+      }
       setLoading(false);
     });
   }, [user]);
@@ -342,6 +356,14 @@ const DashboardCliente = () => {
   };
 
   const membresiaActiva = membresias.find((m) => m.estado === 'activa');
+
+  // Quick action links for client
+  const quickActions = [
+    { label: 'Mis Entrenamientos', href: '/entrenamientos', icon: '⚡', desc: 'Ver historial', color: 'from-accent-amber to-orange-500' },
+    { label: 'Mi Membresía', href: '/membresias', icon: '🛡️', desc: 'Estado y plan', color: 'from-accent-emerald to-green-600' },
+    { label: 'Promociones', href: '/campanas', icon: '📢', desc: 'Ofertas del gym', color: 'from-accent-violet to-purple-600' },
+    { label: 'Mi Seguimiento', href: '/seguimiento', icon: '📊', desc: 'Progreso personal', color: 'from-accent-cyan to-blue-500' },
+  ];
 
   return (
     <div className="animate-fade-in space-y-8 max-w-5xl mx-auto">
@@ -360,42 +382,97 @@ const DashboardCliente = () => {
         </div>
       </div>
 
+      {/* Entrenador asignado */}
+      {!loading && (
+        <div className="card p-5 border border-primary-500/20" style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-emerald to-green-500 flex items-center justify-center text-2xl shadow-lg">
+              🏋️
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-faint)' }}>
+                Tu Entrenador Asignado
+              </p>
+              {entrenadorInfo ? (
+                <div>
+                  <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {entrenadorInfo.nombre}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    📧 {entrenadorInfo.email}
+                    {entrenadorInfo.telefono && <span className="ml-3">📱 {entrenadorInfo.telefono}</span>}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-medium" style={{ color: 'var(--text-muted)' }}>
+                  No tienes un entrenador asignado aún. Contacta al administrador.
+                </p>
+              )}
+            </div>
+            {entrenadorInfo && (
+              <div className="hidden sm:flex">
+                <div className="avatar bg-gradient-to-br from-accent-emerald to-green-500 text-white text-lg w-12 h-12 rounded-xl flex items-center justify-center font-bold">
+                  {entrenadorInfo.nombre.charAt(0)}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Membresía activa */}
       {!loading && (
-        <div className={`card p-6 border ${membresiaActiva ? 'border-accent-emerald/30 bg-accent-emerald/5' : 'border-accent-rose/30 bg-accent-rose/5'}`}>
+        <div className={`card p-6 border ${membresiaActiva ? 'border-accent-emerald/30' : 'border-accent-rose/30'}`}
+          style={{ background: membresiaActiva ? 'rgba(16, 185, 129, 0.05)' : 'rgba(244, 63, 94, 0.05)' }}>
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${membresiaActiva ? 'bg-accent-emerald/20' : 'bg-accent-rose/20'}`}>
               {membresiaActiva ? '✅' : '⚠️'}
             </div>
             <div className="flex-1">
-              <p className="font-bold text-dark-100 text-lg">
+              <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
                 {membresiaActiva ? `Membresía ${membresiaActiva.nombre_plan || 'Activa'}` : 'Sin membresía activa'}
               </p>
               {membresiaActiva && (
-                <p className="text-dark-400 text-sm mt-0.5">
+                <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   Válida hasta: <span className="text-accent-emerald font-semibold">{formatFecha(membresiaActiva.fecha_fin)}</span>
                   {membresiaActiva.precio && (
-                    <span className="ml-3 text-dark-500">· {formatCOP(membresiaActiva.precio)} / mes</span>
+                    <span className="ml-3" style={{ color: 'var(--text-faint)' }}>· {formatCOP(membresiaActiva.precio)} / mes</span>
                   )}
                 </p>
               )}
               {!membresiaActiva && (
-                <p className="text-dark-400 text-sm mt-0.5">Contacta al administrador para renovar tu membresía</p>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>Contacta al administrador para renovar tu membresía</p>
               )}
             </div>
           </div>
         </div>
       )}
 
+      {/* Acciones rápidas */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {quickActions.map((a) => (
+          <Link key={a.label} to={a.href}
+            className="group card p-4 flex flex-col items-center gap-3 hover:-translate-y-1 transition-all duration-200 cursor-pointer border border-white/5 hover:border-primary-500/20 text-center">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${a.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+              <span className="text-2xl">{a.icon}</span>
+            </div>
+            <div>
+              <p className="font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>{a.label}</p>
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{a.desc}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+
       {/* Stats rápidos */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="stat-card blue">
           <p className="text-3xl font-extrabold text-white">{loading ? '—' : entrenamientos.length}</p>
-          <p className="text-xs text-dark-400 font-medium mt-1">Entrenamientos totales</p>
+          <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Entrenamientos totales</p>
         </div>
         <div className="stat-card green">
           <p className="text-3xl font-extrabold text-white">{loading ? '—' : membresias.length}</p>
-          <p className="text-xs text-dark-400 font-medium mt-1">Membresías históricas</p>
+          <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Membresías históricas</p>
         </div>
         <div className="stat-card amber">
           <p className="text-3xl font-extrabold text-white">
@@ -405,21 +482,22 @@ const DashboardCliente = () => {
               return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
             }).length}
           </p>
-          <p className="text-xs text-dark-400 font-medium mt-1">Entrenamientos este mes</p>
+          <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Entrenamientos este mes</p>
         </div>
       </div>
 
       {/* Entrenamientos recientes */}
       <div className="card">
         <div className="card-header">
-          <h2 className="text-base font-bold text-dark-50">⚡ Mis Entrenamientos Recientes</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>⚡ Mis Entrenamientos Recientes</h2>
+          <Link to="/entrenamientos" className="text-xs text-primary-400 hover:text-primary-300 font-medium transition-colors">Ver todos →</Link>
         </div>
         {loading ? (
           <div className="flex justify-center py-12"><div className="spinner" /></div>
         ) : entrenamientos.length === 0 ? (
           <div className="p-12 text-center">
             <span className="text-4xl">🏋️</span>
-            <p className="text-dark-400 mt-3">Aún no tienes entrenamientos registrados</p>
+            <p className="mt-3" style={{ color: 'var(--text-muted)' }}>Aún no tienes entrenamientos registrados</p>
           </div>
         ) : (
           <div className="divide-y divide-white/5">
@@ -429,16 +507,19 @@ const DashboardCliente = () => {
                   {tipoIcons[e.tipo_entrenamiento] || '⚡'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-dark-100">{e.tipo_entrenamiento}</p>
+                  <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>{e.tipo_entrenamiento}</p>
+                  {e.entrenador_nombre && (
+                    <p className="text-xs" style={{ color: 'var(--text-faint)' }}>🏋️ {e.entrenador_nombre}</p>
+                  )}
                   {e.observaciones && (
-                    <p className="text-xs text-dark-500 truncate">{e.observaciones}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--text-faint)' }}>{e.observaciones}</p>
                   )}
                 </div>
                 <div className="text-right flex-shrink-0">
                   {e.duracion_minutos && (
                     <span className="badge badge-info mr-2">{e.duracion_minutos} min</span>
                   )}
-                  <span className="text-xs text-dark-500">{formatFecha(e.fecha)}</span>
+                  <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{formatFecha(e.fecha)}</span>
                 </div>
               </div>
             ))}

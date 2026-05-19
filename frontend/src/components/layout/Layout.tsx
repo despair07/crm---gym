@@ -11,7 +11,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-dark-900 flex">
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-body)' }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />

@@ -4,7 +4,7 @@
  * Rutas públicas:  / (landing), /login, /register
  * Rutas protegidas: /dashboard, /usuarios, /membresias, etc.
  * 
- * Roles: 1=Admin (todo), 2=Entrenador (entrenamientos, asistencia, seguimiento), 3=Cliente (dashboard)
+ * Roles: 1=Admin (todo), 2=Entrenador (entrenamientos, asistencia, seguimiento), 3=Cliente (dashboard, entrenamientos, campañas, seguimiento, membresías)
  */
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ROLES } from './context/AuthContext';
@@ -57,11 +57,11 @@ function App() {
           }
         />
 
-        {/* Membresías - Solo Admin */}
+        {/* Membresías - Admin y Cliente (cliente solo ve sus datos) */}
         <Route
           path="/membresias"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CLIENTE]}>
               <Membresias />
             </ProtectedRoute>
           }
@@ -77,11 +77,11 @@ function App() {
           }
         />
 
-        {/* Entrenamientos - Admin y Entrenadores */}
+        {/* Entrenamientos - Admin, Entrenadores y Clientes */}
         <Route
           path="/entrenamientos"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.ENTRENADOR]}>
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.ENTRENADOR, ROLES.CLIENTE]}>
               <Entrenamientos />
             </ProtectedRoute>
           }
@@ -97,21 +97,21 @@ function App() {
           }
         />
 
-        {/* Campañas - Solo Admin */}
+        {/* Campañas - Admin y Cliente (cliente solo visualiza) */}
         <Route
           path="/campanas"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CLIENTE]}>
               <Campanas />
             </ProtectedRoute>
           }
         />
 
-        {/* Seguimiento - Admin y Entrenadores */}
+        {/* Seguimiento - Admin, Entrenadores y Cliente (cliente solo ve los suyos) */}
         <Route
           path="/seguimiento"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.ENTRENADOR]}>
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.ENTRENADOR, ROLES.CLIENTE]}>
               <Seguimiento />
             </ProtectedRoute>
           }

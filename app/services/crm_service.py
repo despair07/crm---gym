@@ -212,3 +212,8 @@ def listar_todos_pagos():
     """Lista todos los pagos sin filtro"""
     return repo.listar_todos_pagos()
 
+
+def eliminar_pago(id_pago):
+    """Elimina un pago por su ID"""
+    return repo.eliminar_pago(id_pago)
+

@@ -36,3 +36,19 @@ def listar_pagos(id_membresia: int | None = None, current_user: dict = Depends(g
         return crm_service.listar_pagos(id_membresia)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{id_pago}", summary="Eliminar pago")
+def eliminar_pago(id_pago: int, current_user: dict = Depends(get_current_user)):
+    """Eliminar un pago por ID - Solo Admin (rol_id=1)"""
+    # Verificar que sea admin
+    if current_user.get("rol_id") != 1 and current_user.get("id_rol") != 1:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede eliminar pagos")
+    try:
+        result = crm_service.eliminar_pago(id_pago)
+        return {"mensaje": "Pago eliminado correctamente", "filas": result.get("filas_afectadas", 0)}
+    except Exception as e:
+        msg = str(e)
+        if "no existe" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=500, detail=msg)

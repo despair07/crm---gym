@@ -1,10 +1,18 @@
+/**
+ * Asistencia - Registro de entradas y salidas
+ * ADMIN: ve todos los registros
+ * ENTRENADOR: ve solo la asistencia de sus clientes asignados
+ */
 import { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
+import { useAuth } from '../context/AuthContext';
 import { asistenciaService } from '../services/asistenciaService';
+import { usuarioService } from '../services/usuarioService';
 import { formatFechaHora } from '../utils/format';
-import type { AsistenciaResponse, AsistenciaCreate } from '../types/api';
+import type { AsistenciaResponse, AsistenciaCreate, UsuarioResponse } from '../types/api';
 
 const Asistencia = () => {
+  const { user, isEntrenador } = useAuth();
   const [registros, setRegistros] = useState<AsistenciaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,15 +21,38 @@ const Asistencia = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<AsistenciaCreate>({ id_usuario: 0, tipo_registro: 'entrada' });
   const [submitting, setSubmitting] = useState(false);
+  const [clientesAsignados, setClientesAsignados] = useState<number[]>([]);
 
-  // Carga inicial: todos los registros (sin filtro)
-  const fetchTodos = async () => {
+  // Carga inicial
+  useEffect(() => {
+    if (isEntrenador && user) {
+      // Entrenador: cargar sus clientes asignados primero
+      usuarioService.listar(3).then((data) => {
+        const misClientes = data.filter((c: UsuarioResponse) => c.id_entrenador === user.id_usuario);
+        const ids = misClientes.map((c: UsuarioResponse) => c.id_usuario);
+        setClientesAsignados(ids);
+        // Cargar asistencia de todos y luego filtrar
+        fetchTodos(ids);
+      }).catch(() => {
+        setLoading(false);
+      });
+    } else {
+      fetchTodos();
+    }
+  }, [user]);
+
+  const fetchTodos = async (idsClientes?: number[]) => {
     try {
       setLoading(true);
-      // Si el servicio no tiene un método "listarTodos", buscar por un ID muy grande para listar
-      // Intentamos sin ID primero — si no existe el endpoint, degradamos a búsqueda por ID
       const data = await asistenciaService.listarTodos?.() ?? [];
-      setRegistros(data);
+      if (idsClientes && idsClientes.length > 0) {
+        // Filtrar solo los registros de clientes asignados
+        setRegistros(data.filter((r) => idsClientes.includes(r.id_usuario)));
+      } else if (isEntrenador && clientesAsignados.length > 0) {
+        setRegistros(data.filter((r) => clientesAsignados.includes(r.id_usuario)));
+      } else {
+        setRegistros(data);
+      }
       setError(null);
     } catch {
       setRegistros([]);
@@ -31,10 +62,17 @@ const Asistencia = () => {
   };
 
   const fetchPorUsuario = async () => {
-    if (!buscarId) { fetchTodos(); return; }
+    if (!buscarId) { fetchTodos(isEntrenador ? clientesAsignados : undefined); return; }
+    const idBuscar = parseInt(buscarId);
+    // Entrenador: verificar que el cliente sea asignado
+    if (isEntrenador && clientesAsignados.length > 0 && !clientesAsignados.includes(idBuscar)) {
+      setError('Este usuario no es uno de tus clientes asignados');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     try {
       setLoading(true);
-      const data = await asistenciaService.listarPorUsuario(parseInt(buscarId));
+      const data = await asistenciaService.listarPorUsuario(idBuscar);
       setRegistros(data);
       setError(null);
     } catch (err: any) {
@@ -43,8 +81,6 @@ const Asistencia = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => { fetchTodos(); }, []);
 
   const handleCrear = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +92,7 @@ const Asistencia = () => {
       setFormData({ id_usuario: 0, tipo_registro: 'entrada' });
       setSuccess('✅ Asistencia registrada');
       setTimeout(() => setSuccess(null), 3000);
-      buscarId ? fetchPorUsuario() : fetchTodos();
+      buscarId ? fetchPorUsuario() : fetchTodos(isEntrenador ? clientesAsignados : undefined);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Error al registrar asistencia');
     } finally {
@@ -74,7 +110,7 @@ const Asistencia = () => {
         <div className="page-header">
           <div>
             <h1>Asistencia</h1>
-            <p>Registro de entradas y salidas del gimnasio</p>
+            <p>{isEntrenador ? 'Registro de entradas y salidas de tus clientes' : 'Registro de entradas y salidas del gimnasio'}</p>
           </div>
           <button onClick={() => setShowModal(true)} className="btn btn-primary">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,7 +130,7 @@ const Asistencia = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
                 <span className="text-white text-lg">📋</span>
               </div>
-              <span className="text-xs text-dark-400 font-medium">Total Registros</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Total Registros</span>
             </div>
             <p className="text-3xl font-extrabold text-white">{loading ? '—' : registros.length}</p>
           </div>
@@ -103,7 +139,7 @@ const Asistencia = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-emerald to-green-500 flex items-center justify-center">
                 <span className="text-white text-lg">🟢</span>
               </div>
-              <span className="text-xs text-dark-400 font-medium">Entradas</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Entradas</span>
             </div>
             <p className="text-3xl font-extrabold text-white">{loading ? '—' : entradas}</p>
           </div>
@@ -112,7 +148,7 @@ const Asistencia = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-amber to-orange-500 flex items-center justify-center">
                 <span className="text-white text-lg">🔴</span>
               </div>
-              <span className="text-xs text-dark-400 font-medium">Salidas</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Salidas</span>
             </div>
             <p className="text-3xl font-extrabold text-white">{loading ? '—' : salidas}</p>
           </div>
@@ -121,12 +157,12 @@ const Asistencia = () => {
         {/* Filtro por usuario */}
         <div className="card p-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <svg className="w-4 h-4 text-dark-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-faint)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="number"
-              placeholder="Filtrar por ID de usuario..."
+              placeholder={isEntrenador ? 'Filtrar por ID de cliente asignado...' : 'Filtrar por ID de usuario...'}
               value={buscarId}
               onChange={(e) => setBuscarId(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchPorUsuario()}
@@ -134,7 +170,7 @@ const Asistencia = () => {
             />
             <button onClick={fetchPorUsuario} className="btn btn-primary btn-sm">Filtrar</button>
             {buscarId && (
-              <button onClick={() => { setBuscarId(''); fetchTodos(); }} className="btn btn-ghost btn-sm">
+              <button onClick={() => { setBuscarId(''); fetchTodos(isEntrenador ? clientesAsignados : undefined); }} className="btn btn-ghost btn-sm">
                 Limpiar
               </button>
             )}
@@ -160,23 +196,23 @@ const Asistencia = () => {
                   {registros.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="empty-state">
-                        <svg className="w-12 h-12 mx-auto mb-3 text-dark-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        No hay registros de asistencia
+                        {isEntrenador ? 'No hay registros de asistencia de tus clientes' : 'No hay registros de asistencia'}
                       </td>
                     </tr>
                   ) : registros.map((r) => (
                     <tr key={r.id_asistencia}>
-                      <td className="font-mono text-dark-500 text-xs">#{r.id_asistencia}</td>
+                      <td className="font-mono text-xs" style={{ color: 'var(--text-faint)' }}>#{r.id_asistencia}</td>
                       <td>
                         <div className="flex items-center gap-2">
                           <div className="avatar avatar-sm bg-gradient-to-br from-accent-cyan to-blue-500 text-white text-xs">
                             {(r.usuario_nombre || String(r.id_usuario)).charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-dark-200">{r.usuario_nombre || `Usuario #${r.id_usuario}`}</p>
-                            <p className="text-xs text-dark-500">ID: {r.id_usuario}</p>
+                            <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>{r.usuario_nombre || `Usuario #${r.id_usuario}`}</p>
+                            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>ID: {r.id_usuario}</p>
                           </div>
                         </div>
                       </td>
@@ -185,7 +221,7 @@ const Asistencia = () => {
                           {r.tipo_registro === 'entrada' ? '🟢 Entrada' : '🔴 Salida'}
                         </span>
                       </td>
-                      <td className="text-dark-400">{formatFechaHora(r.fecha_hora)}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{formatFechaHora(r.fecha_hora)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,7 +234,7 @@ const Asistencia = () => {
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal-content p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-white mb-5">📋 Registrar Asistencia</h3>
+              <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--text-primary)' }}>📋 Registrar Asistencia</h3>
               <form onSubmit={handleCrear} className="space-y-4">
                 <div>
                   <label className="input-label">ID Usuario *</label>

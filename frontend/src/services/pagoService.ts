@@ -12,4 +12,9 @@ export const pagoService = {
     const response = await api.get<PagoResponse[]>(`/api/v1/pagos${params}`);
     return response.data;
   },
+
+  eliminar: async (id_pago: number): Promise<{ mensaje: string; filas: number }> => {
+    const response = await api.delete(`/api/v1/pagos/${id_pago}`);
+    return response.data;
+  },
 };

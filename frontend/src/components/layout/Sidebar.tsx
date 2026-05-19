@@ -24,7 +24,7 @@ const navigation = [
     name: 'Membresías',
     href: '/membresias',
     icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-    roles: [ROLES.ADMIN], // Solo admin
+    roles: [ROLES.ADMIN, ROLES.CLIENTE], // Admin y Cliente
   },
   {
     name: 'Pagos',
@@ -36,7 +36,7 @@ const navigation = [
     name: 'Entrenamientos',
     href: '/entrenamientos',
     icon: 'M13 10V3L4 14h7v7l9-11h-7z',
-    roles: [ROLES.ADMIN, ROLES.ENTRENADOR], // Admin y entrenadores
+    roles: [ROLES.ADMIN, ROLES.ENTRENADOR, ROLES.CLIENTE], // Todos
   },
   {
     name: 'Asistencia',
@@ -48,13 +48,13 @@ const navigation = [
     name: 'Campañas',
     href: '/campanas',
     icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z',
-    roles: [ROLES.ADMIN], // Solo admin
+    roles: [ROLES.ADMIN, ROLES.CLIENTE], // Admin y Cliente
   },
   {
     name: 'Seguimiento',
     href: '/seguimiento',
     icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
-    roles: [ROLES.ADMIN, ROLES.ENTRENADOR], // Admin y entrenadores
+    roles: [ROLES.ADMIN, ROLES.ENTRENADOR, ROLES.CLIENTE], // Todos
   },
   {
     name: 'Mi Perfil',
@@ -107,9 +107,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-[260px] bg-dark-950/95 backdrop-blur-xl border-r border-white/5 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto flex flex-col ${
+        className={`fixed top-0 left-0 z-50 h-full w-[260px] backdrop-blur-xl border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-subtle)' }}
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-white/5 flex-shrink-0">

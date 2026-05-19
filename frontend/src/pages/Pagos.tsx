@@ -47,6 +47,19 @@ const Pagos = () => {
     }
   };
 
+  const handleEliminar = async (id_pago: number) => {
+    if (!confirm('¿Estás seguro de eliminar este pago? Esta acción no se puede deshacer.')) return;
+    try {
+      await pagoService.eliminar(id_pago);
+      setSuccess('✅ Pago eliminado correctamente');
+      setTimeout(() => setSuccess(null), 3000);
+      fetchPagos();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al eliminar pago');
+      setTimeout(() => setError(null), 4000);
+    }
+  };
+
   const totalIngresos = pagos.reduce((sum, p) => sum + (p.monto || 0), 0);
   const pagosHoy = pagos.filter(p => {
     if (!p.fecha_pago) return false;
@@ -87,7 +100,7 @@ const Pagos = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-amber to-orange-500 flex items-center justify-center">
                 <span className="text-white text-lg">💳</span>
               </div>
-              <span className="text-xs text-dark-400 font-medium">Total Registros</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Total Registros</span>
             </div>
             <p className="text-3xl font-extrabold text-white">{loading ? '—' : pagos.length}</p>
           </div>
@@ -96,7 +109,7 @@ const Pagos = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-emerald to-green-500 flex items-center justify-center">
                 <span className="text-white text-lg">💰</span>
               </div>
-              <span className="text-xs text-dark-400 font-medium">Ingresos Totales</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Ingresos Totales</span>
             </div>
             <p className="text-xl font-extrabold text-accent-emerald">{loading ? '—' : formatCOP(totalIngresos)}</p>
           </div>
@@ -105,7 +118,7 @@ const Pagos = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
                 <span className="text-white text-lg">📅</span>
               </div>
-              <span className="text-xs text-dark-400 font-medium">Pagos Hoy</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Pagos Hoy</span>
             </div>
             <p className="text-3xl font-extrabold text-white">{loading ? '—' : pagosHoy.length}</p>
           </div>
@@ -114,7 +127,7 @@ const Pagos = () => {
         {/* Búsqueda */}
         <div className="card p-4">
           <div className="flex items-center gap-3">
-            <svg className="w-4 h-4 text-dark-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-faint)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -124,7 +137,7 @@ const Pagos = () => {
               onChange={(e) => setSearch(e.target.value)}
               className="input-field !bg-transparent !border-0 !shadow-none !ring-0 focus:!shadow-none"
             />
-            <span className="text-xs text-dark-500 whitespace-nowrap">{filtered.length} registros</span>
+            <span className="text-xs whitespace-nowrap" style={{ color: 'var(--text-faint)' }}>{filtered.length} registros</span>
           </div>
         </div>
 
@@ -142,27 +155,37 @@ const Pagos = () => {
                     <th>Concepto</th>
                     <th>Monto (COP)</th>
                     <th>Fecha</th>
+                    <th className="text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={5} className="empty-state">No hay pagos registrados</td></tr>
+                    <tr><td colSpan={6} className="empty-state">No hay pagos registrados</td></tr>
                   ) : filtered.map((p) => (
                     <tr key={p.id_pago}>
-                      <td className="font-mono text-dark-500 text-xs">#{p.id_pago}</td>
+                      <td className="font-mono text-xs" style={{ color: 'var(--text-faint)' }}>#{p.id_pago}</td>
                       <td>
                         <div>
-                          <p className="font-medium text-dark-200">
+                          <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>
                             {p.usuario_nombre || `Membresía #${p.id_membresia}`}
                           </p>
-                          <p className="text-xs text-dark-500">Membresía #{p.id_membresia}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Membresía #{p.id_membresia}</p>
                         </div>
                       </td>
-                      <td className="text-dark-300">{p.concepto || '—'}</td>
+                      <td style={{ color: 'var(--text-body)' }}>{p.concepto || '—'}</td>
                       <td>
                         <span className="font-bold text-accent-emerald text-base">{formatCOP(p.monto)}</span>
                       </td>
-                      <td className="text-dark-400">{formatFecha(p.fecha_pago)}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{formatFecha(p.fecha_pago)}</td>
+                      <td className="text-right">
+                        <button
+                          onClick={() => handleEliminar(p.id_pago)}
+                          className="action-btn action-btn-delete"
+                          title="Eliminar pago"
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -171,7 +194,7 @@ const Pagos = () => {
             {/* Totalizador */}
             {filtered.length > 0 && (
               <div className="px-5 py-3 border-t border-white/5 flex justify-end items-center gap-4">
-                <span className="text-xs text-dark-500">{filtered.length} pagos filtrados</span>
+                <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{filtered.length} pagos filtrados</span>
                 <span className="text-sm font-bold text-accent-emerald">
                   Total: {formatCOP(filtered.reduce((s, p) => s + (p.monto || 0), 0))}
                 </span>
@@ -184,7 +207,7 @@ const Pagos = () => {
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal-content p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-white mb-5">💳 Registrar Pago</h3>
+              <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--text-primary)' }}>💳 Registrar Pago</h3>
               <form onSubmit={handleCrear} className="space-y-4">
                 <div>
                   <label className="input-label">ID Membresía *</label>
@@ -207,7 +230,7 @@ const Pagos = () => {
                 <div>
                   <label className="input-label">Monto (COP) *</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400 text-sm font-bold">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold" style={{ color: 'var(--text-muted)' }}>$</span>
                     <input
                       type="number" required min={1000} step={1000}
                       value={formData.monto || ''}

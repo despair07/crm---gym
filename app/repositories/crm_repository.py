@@ -148,3 +148,25 @@ def listar_todos_pagos():
     """Lista todos los pagos sin filtro de membresía"""
     return execute_sp("sp_listar_pagos", [None])
 
+
+def eliminar_pago(id_pago):
+    """Elimina un pago por su ID usando SQL directo"""
+    from app.database import get_db_connection
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Verificar que el pago existe
+        cursor.execute("SELECT id_pago FROM pagos WHERE id_pago = %s", (id_pago,))
+        pago = cursor.fetchone()
+        if not pago:
+            raise Exception("El pago no existe")
+        # Eliminar el pago
+        cursor.execute("DELETE FROM pagos WHERE id_pago = %s", (id_pago,))
+        conn.commit()
+        return {"filas_afectadas": cursor.rowcount}
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+

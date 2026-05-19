@@ -87,9 +87,16 @@ const Landing = () => {
       </nav>
 
       {/* ── HERO ── */}
-      <section className="landing-hero">
+      <section className="landing-hero" style={{ position: 'relative' }}>
         <div className="landing-hero-bg" />
-        <div className="landing-hero-content">
+        {/* Imagen de fondo del gym */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          backgroundImage: 'url(/img/gym-hero.jpg)',
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          opacity: 0.18,
+        }} />
+        <div className="landing-hero-content" style={{ position: 'relative', zIndex: 1 }}>
           <div className="landing-hero-badge">🏋️ Gym Popayán · La Ciudad Blanca</div>
           <h1 className="landing-hero-title">
             Transforma Tu Cuerpo,<br />
@@ -204,6 +211,20 @@ const Landing = () => {
             <h2>Ejercicios Disponibles</h2>
             <p>Variedad de ejercicios para todos los niveles de condición física</p>
           </div>
+
+          {/* Imagen de entrenamiento */}
+          <div style={{
+            width: '100%', maxHeight: '360px', borderRadius: '20px', overflow: 'hidden',
+            marginBottom: '2.5rem', border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+          }}>
+            <img
+              src="/img/gym-training.jpeg"
+              alt="Entrenamiento en Gym Popayán"
+              style={{ width: '100%', height: '360px', objectFit: 'cover', display: 'block' }}
+            />
+          </div>
+
           <div className="landing-exercises-grid">
             {ejercicios.map((ej) => (
               <div key={ej.id} className="landing-exercise-card">
@@ -263,6 +284,20 @@ const Landing = () => {
             <h2>Lo Que Dicen Nuestros Miembros</h2>
             <p>Historias reales de popayanejos que transformaron su vida en nuestro gimnasio</p>
           </div>
+
+          {/* Imagen de comunidad */}
+          <div style={{
+            width: '100%', maxHeight: '340px', borderRadius: '20px', overflow: 'hidden',
+            marginBottom: '2.5rem', border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+          }}>
+            <img
+              src="/img/gym-community.jpg"
+              alt="Comunidad Gym Popayán"
+              style={{ width: '100%', height: '340px', objectFit: 'cover', display: 'block' }}
+            />
+          </div>
+
           <div className="landing-testimonials-grid">
             {testimonios.map((t) => (
               <div key={t.id} className="landing-testimonial-card">
