@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_NAME: str = os.getenv("DB_NAME", "gimnasio")
-    DB_PORT: int = int(os.getenv("DB_PORT"3306))
+    DB_PORT: int = int(os.getenv("DB_PORT",3306))
 
     # App configuration
     APP_TITLE: str = os.getenv("APP_TITLE", "Gym CRM API")
